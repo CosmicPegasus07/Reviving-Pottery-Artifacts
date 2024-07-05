@@ -71,7 +71,7 @@ python evaluate_model.py
 python api_server.py
 
 ## Project Structure
-
+```text
 federated-mental-health-recommendations/
 ├── data/
 │   ├── provider1_data.csv
@@ -90,7 +90,7 @@ federated-mental-health-recommendations/
 ├── api_server.py
 ├── requirements.txt
 └── README.md
-
+```
 ## How It Works
 
 1. **Data Preparation**: Each healthcare provider prepares their patient data, including features like demographics, symptoms, diagnoses, and treatment outcomes.
