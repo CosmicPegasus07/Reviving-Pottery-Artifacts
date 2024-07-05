@@ -126,4 +126,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-For any questions or concerns, please open an issue on GitHub or contact the project maintainer at afeef2001kashif@gmail.com
+For any questions or concerns, please open an issue on GitHub or contact the project maintainer at afeef2001kashif@gmail.com | bindupriyar3@gmail.com | 
