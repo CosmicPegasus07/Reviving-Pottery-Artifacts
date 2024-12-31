@@ -42,7 +42,7 @@ cd Fedrated-Learning.git
 
 2. Create a virtual environment:
 
-python -m venv venv
+python -m venv venv            
 source venv/bin/activate  # On Windows, use venv\Scripts\activate
 
 3. Install the required packages:
@@ -126,4 +126,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-For any questions or concerns, please open an issue on GitHub or contact the project maintainer at afeef2001kashif@gmail.com | bindupriyar3@gmail.com | 
+For any questions or concerns, please open an issue on GitHub or contact the project maintainer at afeef2001kashif@gmail.com |                 
