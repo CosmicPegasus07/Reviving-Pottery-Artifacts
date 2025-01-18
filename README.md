@@ -56,11 +56,11 @@ This project focuses on restoring historical artifacts and manuscripts using cut
 ## Usage
 
 1. Prepare your data:
-- Place damaged artifact images in the data/input folder.
-- Ensure images are in `.jpg` or `.png` format and meet the input resolution requirements.
+   - Place damaged artifact images in the data/input folder.
+   - Ensure images are in `.jpg` or `.png` format and meet the input resolution requirements.
 
 2. Configure the restoration parameters:
-- Modify `config.yml` to set model type, restoration options, and training parameters.
+   - Modify `config.yml` to set model type, restoration options, and training parameters.
 
 3. Perform artifact restoration:
    
