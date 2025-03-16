@@ -102,67 +102,140 @@
     const intensitySlider = document.getElementById('intensity');
     const intensityValue = document.getElementById('intensity_value');
 
+    let uploadedImage = null;
+
+    // Handle file input change
+    document.getElementById('input_image').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedImage = new Image();
+                uploadedImage.onload = function() {
+                    if (maskSelect.value === 'draw_mask') {
+                        clearCanvas();
+                    }
+                }
+                uploadedImage.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
     // Show/hide sections based on initial value
     updateSections(maskSelect.value);
 
     maskSelect.addEventListener('change', function() {
-      updateSections(this.value);
+        updateSections(this.value);
+        if (this.value === 'draw_mask' && uploadedImage) {
+            clearCanvas();
+        }
     });
 
     function updateSections(value) {
-      drawSection.style.display = 'none';
-      uploadSection.style.display = 'none';
-      sliderSection.style.display = 'none';
+        drawSection.style.display = 'none';
+        uploadSection.style.display = 'none';
+        sliderSection.style.display = 'none';
 
-      if (value === 'draw_mask') {
-        drawSection.style.display = 'block';
-      } else if (value === 'upload_mask') {
-        uploadSection.style.display = 'block';
-      } else if (value === 'pottery_cracks') {
-        sliderSection.style.display = 'block';
-      }
+        if (value === 'draw_mask') {
+            drawSection.style.display = 'block';
+        } else if (value === 'upload_mask') {
+            uploadSection.style.display = 'block';
+        } else if (value === 'pottery_cracks') {
+            sliderSection.style.display = 'block';
+        }
     }
 
     intensitySlider.addEventListener('input', function() {
-      intensityValue.textContent = this.value;
+        intensityValue.textContent = this.value;
     });
 
     const canvas = document.getElementById('maskCanvas');
     const ctx = canvas.getContext('2d');
 
     function initializeCanvas() {
-      ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function clearCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      initializeCanvas();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (uploadedImage) {
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+        } else {
+            initializeCanvas();
+        }
     }
 
     initializeCanvas();
 
     let drawing = false;
-    canvas.addEventListener('mousedown', () => { drawing = true; });
-    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+    let lastX, lastY;
+
+    canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    function startDrawing(e) {
+        drawing = true;
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
 
     function draw(e) {
-      if (!drawing) return;
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'white';
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
+        if (!drawing) return;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function stopDrawing() {
+        drawing = false;
     }
 
     document.querySelector('form').addEventListener('submit', function(e) {
-      if (document.getElementById('mask_option').value === 'draw_mask') {
-        const canvasData = canvas.toDataURL('image/png');
-        document.getElementById('canvas_data').value = canvasData;
-      }
+        if (document.getElementById('mask_option').value === 'draw_mask') {
+            // Create a temporary canvas for the mask
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Fill with black background
+            tempCtx.fillStyle = 'black';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Get the image data from the main canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Create mask image data
+            const maskImageData = tempCtx.createImageData(canvas.width, canvas.height);
+            const maskData = maskImageData.data;
+
+            // For each pixel, check if it's been drawn on
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
+                    maskData[i] = 255;     // R
+                    maskData[i + 1] = 255; // G
+                    maskData[i + 2] = 255; // B
+                    maskData[i + 3] = 255; // A
+                } else {
+                    maskData[i + 3] = 255; // Set alpha to fully opaque
+                }
+            }
+
+            // Put the mask data on the temporary canvas
+            tempCtx.putImageData(maskImageData, 0, 0);
+
+            // Set the form data to the mask image
+            document.getElementById('canvas_data').value = tempCanvas.toDataURL('image/png');
+        }
     });
   </script>
 

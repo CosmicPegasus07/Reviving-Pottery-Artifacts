@@ -20,6 +20,9 @@ import matplotlib.pyplot as plt
 # Add imports for pattern_continuity, edge_coherence, and texture_consistency
 from skimage.feature import local_binary_pattern
 
+# Add this import at the top if not already present
+from PIL import Image
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'input')
 app.config['OUTPUT_FOLDER'] = os.path.join(os.getcwd(), 'output')
@@ -313,7 +316,11 @@ def upload():
             # Save as input_img with original extension
             input_filename = f'input_img{ext}'
             input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
-            input_file.save(input_path)
+            
+            # Open and resize the image using PIL
+            img = Image.open(input_file)
+            img = img.resize((512, 512), Image.Resampling.LANCZOS)
+            img.save(input_path)
         else:
             return "Invalid input image", 400
 
@@ -410,10 +417,16 @@ def upload():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        ensure_image_size(file_path)
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/output/<filename>')
 def output_file(filename):
+    file_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
+    if os.path.exists(file_path):
+        ensure_image_size(file_path)
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
 def create_masked_input():
@@ -463,6 +476,13 @@ def results():
     # Calculate metrics before rendering the results page
     metrics = calculate_metrics()
     return render_template('results.html', metrics=metrics)
+
+def ensure_image_size(image_path, size=(512, 512)):
+    """Ensure image is the correct size"""
+    img = Image.open(image_path)
+    if img.size != size:
+        img = img.resize(size, Image.Resampling.LANCZOS)
+        img.save(image_path)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Use Render-assigned port or default to 5000
