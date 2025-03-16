@@ -385,6 +385,10 @@ def upload():
         else:
             return "Invalid mask option", 400
 
+        # After handling mask selection and before running inpainting
+        # Create masked input image
+        create_masked_input()
+
         # --- Step 3: Run the inpainting process ---
         def run_inpainting():
             try:
@@ -412,20 +416,18 @@ def uploaded_file(filename):
 def output_file(filename):
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
-# Add new route for masked input image
-@app.route('/masked_input')
-def masked_input():
+def create_masked_input():
     # Get the input image filename (with extension)
     input_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
                   if f.startswith('input_img')]
     if not input_files:
-        return "Input image not found", 404
+        return None
     
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_files[0])
     mask_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
                  if f.startswith('mask')]
     if not mask_files:
-        return "Mask not found", 404
+        return None
     
     mask_path = os.path.join(app.config['UPLOAD_FOLDER'], mask_files[0])
     
@@ -442,17 +444,19 @@ def masked_input():
     masked_input = input_image.copy()
     masked_input[binary_mask == 255] = [255, 255, 255]
     
-    # Convert BGR to RGB before sending
-    masked_input = cv2.cvtColor(masked_input, cv2.COLOR_BGR2RGB)
-    
-    masked_input_path = os.path.join('static', 'masked_input.png')
+    # Save the masked input image in the upload folder
+    masked_input_path = os.path.join(app.config['UPLOAD_FOLDER'], 'masked_input.png')
     cv2.imwrite(masked_input_path, masked_input)
     
-    # Convert to PNG bytes
-    _, buffer = cv2.imencode('.png', masked_input)
-    response = make_response(buffer.tobytes())
-    response.headers['Content-Type'] = 'image/png'
-    return response
+    return masked_input_path
+
+@app.route('/masked_input')
+def masked_input():
+    masked_input_path = create_masked_input()
+    if masked_input_path is None:
+        return "Could not create masked input image", 404
+    
+    return send_from_directory(app.config['UPLOAD_FOLDER'], 'masked_input.png')
 
 @app.route('/results')
 def results():
