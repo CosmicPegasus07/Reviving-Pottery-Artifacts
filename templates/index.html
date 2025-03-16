@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Inpainting</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    .canvas-container {
+      position: relative;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 20px 0;
+      width: 100%;
+      max-width: 512px;
+      margin: 20px auto;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background-color: black;
+      border-radius: 4px;
+    }
+    .form-group {
+      margin-bottom: 25px;
+    }
+    .btn {
+      padding: 10px 25px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center">Upload an Image for Inpainting</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data" class="mt-4">
+      <div class="form-group">
+        <label for="input_image">Input Image:</label>
+        <input type="file" class="form-control-file" id="input_image" name="input_image" accept="image/*" required>
+      </div>
+      <div class="form-group">
+        <label for="mask_option">Select Mask Option:</label>
+        <select class="form-control" name="mask_option" id="mask_option">
+          <option value="upload_mask">Upload Mask</option>
+          <option value="draw_mask">Draw Mask</option>
+          <option value="random_freeform">Random Free-form</option>
+          <option value="circular">Circular Mask</option>
+          <option value="bbox">Random Bounding Box</option>
+          <option value="edge">Edge Detection Mask</option>
+        </select>
+      </div>
+      <div id="draw_mask_section" class="canvas-container" style="display:none;">
+        <canvas id="maskCanvas" width="512" height="512"></canvas>
+        <button type="button" class="btn btn-secondary mt-2" onclick="clearCanvas()">Clear</button>
+        <input type="hidden" name="canvas_data" id="canvas_data">
+      </div>
+      <div id="upload_mask_section" class="form-group" style="display:none;">
+        <label for="mask_image">Mask Image:</label>
+        <input type="file" class="form-control-file" id="mask_image" name="mask_image" accept="image/*">
+      </div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+  
+  <script>
+    const maskSelect = document.getElementById('mask_option');
+    maskSelect.addEventListener('change', function() {
+      const drawSection = document.getElementById('draw_mask_section');
+      const uploadSection = document.getElementById('upload_mask_section');
+      if (this.value === 'draw_mask') {
+        drawSection.style.display = 'block';
+        uploadSection.style.display = 'none';
+      } else if (this.value === 'upload_mask') {
+        uploadSection.style.display = 'block';
+        drawSection.style.display = 'none';
+      } else {
+        drawSection.style.display = 'none';
+        uploadSection.style.display = 'none';
+      }
+    });
+
+    const canvas = document.getElementById('maskCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function initializeCanvas() {
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      initializeCanvas();
+    }
+
+    initializeCanvas();
+
+    let drawing = false;
+    canvas.addEventListener('mousedown', () => { drawing = true; });
+    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener('mousemove', draw);
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'white';
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    }
+
+    document.querySelector('form').addEventListener('submit', function(e) {
+      if (document.getElementById('mask_option').value === 'draw_mask') {
+        const canvasData = canvas.toDataURL('image/png');
+        document.getElementById('canvas_data').value = canvasData;
+      }
+    });
+  </script>
+</body>
+</html>
