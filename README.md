@@ -70,8 +70,8 @@ or
 5. To Train the model:
 
    ```bash
-   pip install -r requirements.txt
    cd Notebook Implementation/Training
+   pip install -r requirements.txt
    run the notebook
 
 ## Project Structure
