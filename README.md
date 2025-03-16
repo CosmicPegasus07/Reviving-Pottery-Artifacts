@@ -64,8 +64,15 @@ or
 
    ```bash
    cd Notebook Implementation
-   mv Pottery Inpainting.ipynb FlaskApp
+   mv Testing/'Pottery Inpainting.ipynb' FlaskApp
    Run the notebook in the FlaskApp folder
+
+5. To Train the model:
+
+   ```bash
+   pip install -r requirements.txt
+   cd Notebook Implementation/Training
+   run the notebook
 
 ## Project Structure
 ```text

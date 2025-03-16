@@ -3,3 +3,7 @@
 **/__pycache__
 **/.vscode
 **/*.pyc
+/Notebook Implementation/Training/dataset/*.jpg
+/Notebook Implementation/Training/models/*.pth
+/Notebook Implementation/Training/pytorch_env
+/Notebook Implementation/Training/samples/*.jpg
