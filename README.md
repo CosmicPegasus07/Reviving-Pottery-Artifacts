@@ -1,4 +1,4 @@
-# Timeless Reconstruction: Artifact Restoration Using Generative Artificial Intelligence
+# Reviving Pottery Artifacts: Generative AI Image Inpainting for Restoration
 
 ## Project Overview
 
@@ -9,24 +9,23 @@ This project focuses on restoring historical artifacts and manuscripts using cut
 1. [Features](#features)
 2. [Prerequisites](#prerequisites)
 3. [Installation](#installation)
-4. [Usage](#usage)
-5. [Project Structure](#project-structure)
-6. [How It Works](#how-it-works)
-7. [Contributing](#contributing)
-8. [License](#license)
-9. [Contact](#contact)
+4. [Project Structure](#project-structure)
+5. [How It Works](#how-it-works)
+6. [Contributing](#contributing)
+7. [License](#license)
+8. [Contact](#contact)
 
 ## Features
 
 - Generative AI-based artifact restoration using advanced models like GANs and diffusion models
-- Pretrained models for various artifact categories (e.g., manuscripts, sculptures, paintings)
+- Pretrained models for pottery 
 - Support for training on custom datasets
 - Visualization tools for comparing original and restored artifacts
 - Scalable architecture for adding new restoration techniques
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - PyTorch 1.10+
 - torchvision
 - numpy
@@ -46,58 +45,53 @@ This project focuses on restoring historical artifacts and manuscripts using cut
 
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows, use venv\Scripts\activate
+   venv\Scripts\activate #If MacOs use source venv/bin/activate 
 
 3. Install the required packages:
 
    ```bash
    pip install -r requirements.txt
 
-## Usage
-
-1. Prepare your data:
-   - Place damaged artifact images in the data/input folder.
-   - Ensure images are in `.jpg` or `.png` format and meet the input resolution requirements.
-
-2. Configure the restoration parameters:
-   - Modify `config.yml` to set model type, restoration options, and training parameters.
-
-3. Perform artifact restoration:
-   
-   ```bash
-   python run_restoration.py
-
-4. Evaluate restoration results:
+4. Run FlaskApp:
 
    ```bash
-   python evaluate_results.py
+   cd FlaskApp
+   python app.py
 
-5. Start the API server for real-time restoration:
+or
+
+5. Run Jupiter Notebook:
 
    ```bash
-   python api_server.py
+   cd Notebook Implementation
+   mv Pottery Inpainting.ipynb FlaskApp
+   Run the notebook in the FlaskApp folder
 
 ## Project Structure
 ```text
-timeless-reconstruction/
-├── data/
-│   ├── input/
-│   ├── output/
-│   └── samples/
-├── models/
-│   ├── gan_model.py
-│   ├── diffusion_model.py
-│   └── pretrained/
-├── utils/
-│   ├── image_processing.py
-│   ├── model_utils.py
-│   └── visualization.py
-├── config.yml
-├── run_restoration.py
-├── evaluate_results.py
-├── api_server.py
-├── requirements.txt
-└── README.md
+Reviving Pottery Artifacts/
+│── FlaskApp/                   # Main Flask application directory
+│   │── __pycache__/            # Compiled Python files
+│   │── .ipynb_checkpoints/     # Jupyter Notebook checkpoints
+│   │── deepfillv2/             # DeepFill v2 model (for image inpainting)
+│   │── examples/               # Example images or test cases
+│   │── input/                  # Input images or data
+│   │── model/                  # Model files or pre-trained weights
+│   │── output/                 # Output results (processed images, logs, etc.)
+│   │── templates/              # HTML templates for Flask frontend
+│   │── app.py                  # Main Flask application
+│   │── config.py               # Configuration settings
+│   │── create_mask.py          # Script to generate masks for inpainting
+│   │── edge_detection_mask.py   # Script for edge detection-based masking
+│   │── inpaint.py              # Core inpainting script
+│
+│── Notebook Implementation/    # Jupyter notebooks for model testing
+│   │── Pottery Inpainting.ipynb # Notebook demonstrating pottery inpainting
+│
+│── .gitignore                  # Git ignore file
+│── LICENSE                     # Project license
+│── README.md                   # Project documentation
+│── requirements.txt             # Dependencies for the project
 ```
 ## How It Works
 
