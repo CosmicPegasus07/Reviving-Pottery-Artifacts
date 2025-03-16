@@ -38,6 +38,16 @@
       padding: 10px 25px;
       font-weight: 500;
     }
+    .slider-container {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      display: none;
+    }
+    .intensity-slider {
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -49,15 +59,27 @@
         <input type="file" class="form-control-file" id="input_image" name="input_image" accept="image/*" required>
       </div>
       <div class="form-group">
-        <label for="mask_option">Select Mask Option:</label>
+        <label for="mask_option">Select Mask Method:</label>
         <select class="form-control" name="mask_option" id="mask_option">
+          <option value="">Choose a method to mask</option>
           <option value="upload_mask">Upload Mask</option>
           <option value="draw_mask">Draw Mask</option>
           <option value="random_freeform">Random Free-form</option>
           <option value="circular">Circular Mask</option>
           <option value="bbox">Random Bounding Box</option>
           <option value="edge">Edge Detection Mask</option>
+          <option value="combined_edge">Combined Edge</option>
+          <option value="outer_edge">Outer Edge</option>
+          <option value="broken_edge">Broken Edge</option>
+          <option value="stylized_edge">Stylized Edge</option>
+          <option value="pottery_cracks">Pottery Cracks</option>
         </select>
+      </div>
+      <div id="slider_section" class="slider-container">
+        <label for="intensity">Crack Intensity:</label>
+        <input type="range" class="intensity-slider" id="intensity" name="intensity" 
+               min="0.1" max="1.0" step="0.1" value="0.7">
+        <span id="intensity_value">0.7</span>
       </div>
       <div id="draw_mask_section" class="canvas-container" style="display:none;">
         <canvas id="maskCanvas" width="512" height="512"></canvas>
@@ -74,19 +96,35 @@
   
   <script>
     const maskSelect = document.getElementById('mask_option');
+    const drawSection = document.getElementById('draw_mask_section');
+    const uploadSection = document.getElementById('upload_mask_section');
+    const sliderSection = document.getElementById('slider_section');
+    const intensitySlider = document.getElementById('intensity');
+    const intensityValue = document.getElementById('intensity_value');
+
+    // Show/hide sections based on initial value
+    updateSections(maskSelect.value);
+
     maskSelect.addEventListener('change', function() {
-      const drawSection = document.getElementById('draw_mask_section');
-      const uploadSection = document.getElementById('upload_mask_section');
-      if (this.value === 'draw_mask') {
+      updateSections(this.value);
+    });
+
+    function updateSections(value) {
+      drawSection.style.display = 'none';
+      uploadSection.style.display = 'none';
+      sliderSection.style.display = 'none';
+
+      if (value === 'draw_mask') {
         drawSection.style.display = 'block';
-        uploadSection.style.display = 'none';
-      } else if (this.value === 'upload_mask') {
+      } else if (value === 'upload_mask') {
         uploadSection.style.display = 'block';
-        drawSection.style.display = 'none';
-      } else {
-        drawSection.style.display = 'none';
-        uploadSection.style.display = 'none';
+      } else if (value === 'pottery_cracks') {
+        sliderSection.style.display = 'block';
       }
+    }
+
+    intensitySlider.addEventListener('input', function() {
+      intensityValue.textContent = this.value;
     });
 
     const canvas = document.getElementById('maskCanvas');
@@ -125,6 +163,52 @@
         const canvasData = canvas.toDataURL('image/png');
         document.getElementById('canvas_data').value = canvasData;
       }
+    });
+  </script>
+
+  <div id="progress" class="alert alert-info" style="display: none;"></div>
+
+  <script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show progress div
+        const progressDiv = document.getElementById('progress');
+        progressDiv.style.display = 'block';
+        progressDiv.innerHTML = 'Starting process...';
+        
+        // Submit form
+        const formData = new FormData(this);
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            // Connect to SSE endpoint
+            const events = new EventSource('/progress');
+            
+            events.onmessage = function(event) {
+                progressDiv.innerHTML = event.data;
+                if (event.data === 'Inpainting complete!') {
+                    events.close();
+                    // Add a small delay before redirecting
+                    setTimeout(() => {
+                        window.location.href = '/results';
+                    }, 500);
+                }
+            };
+
+            events.onerror = function(error) {
+                console.error('SSE Error:', error);
+                events.close();
+                progressDiv.innerHTML = 'An error occurred during processing.';
+            };
+        }).catch(error => {
+            console.error('Error:', error);
+            progressDiv.innerHTML = 'An error occurred while uploading.';
+        });
     });
   </script>
 </body>

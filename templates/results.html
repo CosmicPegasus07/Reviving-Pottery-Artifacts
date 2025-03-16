@@ -71,18 +71,20 @@
     
     <div class="image-row">
       <div class="image-container">
-        <h3>Input Image</h3>
-        <img src="{{ url_for('uploaded_file', filename='input_img.png') }}" alt="Input Image">
+        <h3>Masked Input</h3>
+        <!-- Create masked input image in Flask route and display it here -->
+        <!-- <img src="{{ url_for('masked_input', filename='masked_input.png') }}" alt="Masked Input"> -->
+        <img src="{{ url_for('static', filename='masked_input.png') }}" alt="Masked Input">
       </div>
       
       <div class="image-container">
-        <h3>Mask Image</h3>
-        <img src="{{ url_for('uploaded_file', filename='mask.png') }}" alt="Mask Image">
+        <h3>Inpainted Output</h3>
+        <img src="{{ url_for('output_file', filename='inpainted_img.png') }}" alt="Inpainted Output">
       </div>
       
       <div class="image-container">
-        <h3>Output Image</h3>
-        <img src="{{ url_for('output_file', filename='inpainted_img.png') }}" alt="Output Image">
+        <h3>Actual Image</h3>
+        <img src="{{ url_for('uploaded_file', filename='input_img.png') }}" alt="Actual Image">
       </div>
     </div>
     
@@ -90,15 +92,29 @@
       <h3 class="mb-3">Quality Metrics</h3>
       {% if metrics %}
         <ul class="metrics-list">
+          <!-- Global Metrics -->
           <li><strong>Global SSIM:</strong> {{ metrics.global_ssim }}</li>
           <li><strong>Global PSNR:</strong> {{ metrics.global_psnr }} dB</li>
           <li><strong>Global MSE:</strong> {{ metrics.global_mse }}</li>
           <li><strong>Global L1:</strong> {{ metrics.global_l1 }}</li>
           <li><strong>Global Color Difference:</strong> {{ metrics.global_color_diff }}</li>
+          <li><strong>Histogram Similarity:</strong> {{ metrics.histogram_similarity }}</li>
+          
+          <!-- Region Metrics -->
           <li><strong>Region SSIM:</strong> {{ metrics.region_ssim }}</li>
           <li><strong>Region MSE:</strong> {{ metrics.region_mse }}</li>
           <li><strong>Region L1:</strong> {{ metrics.region_l1 }}</li>
           <li><strong>Region Color Difference:</strong> {{ metrics.region_color_diff }}</li>
+          
+          <!-- Advanced Metrics -->
+          <li><strong>Pattern Continuity:</strong> {{ metrics.pattern_continuity }}</li>
+          <li><strong>Edge Coherence:</strong> {{ metrics.edge_coherence }}</li>
+          <li><strong>Texture Consistency:</strong> {{ metrics.texture_consistency }}</li>
+          <li><strong>Overall Quality Score:</strong> {{ metrics.overall_score }}</li>
+          <li><strong>Quality Rating:</strong> {{ metrics.quality_rating }}</li>
+          {% if metrics.improvement_percentage is defined %}
+          <li><strong>Improvement:</strong> {{ "%.2f"|format(metrics.improvement_percentage) }}%</li>
+          {% endif %}
         </ul>
       {% else %}
         <p>Metrics could not be calculated.</p>

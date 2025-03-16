@@ -9,32 +9,32 @@ from config import RESIZE_TO, MASKIMAGE
 
 
 def create_ff_mask():
-    # config = {
-    #     "img_shape": list(RESIZE_TO),
-    #     "mv": 15,
-    #     "ma": 4.0,
-    #     "ml": 40,
-    #     "mbw": 5,
-    # }
+    config = {
+        "img_shape": list(RESIZE_TO),
+        "mv": 15,
+        "ma": 4.0,
+        "ml": 40,
+        "mbw": 5,
+    }
 
-    # h, w = config["img_shape"]
-    # mask = np.zeros((h, w))
-    # num_v = np.random.randint(config["mv"])
+    h, w = config["img_shape"]
+    mask = np.zeros((h, w))
+    num_v = np.random.randint(config["mv"])
 
-    # for i in range(num_v):
-    #     start_x = np.random.randint(w)
-    #     start_y = np.random.randint(h)
-    #     for j in range(1 + np.random.randint(5)):
-    #         angle = 0.01 + np.random.randint(config["ma"])
-    #         if i % 2 == 0:
-    #             angle = 2 * 3.1415926 - angle
-    #         length = 10 + np.random.randint(config["ml"])
-    #         brush_w = 5 + np.random.randint(config["mbw"])
-    #         end_x = (start_x + length * np.sin(angle)).astype(np.int32)
-    #         end_y = (start_y + length * np.cos(angle)).astype(np.int32)
+    for i in range(num_v):
+        start_x = np.random.randint(w)
+        start_y = np.random.randint(h)
+        for j in range(1 + np.random.randint(5)):
+            angle = 0.01 + np.random.randint(config["ma"])
+            if i % 2 == 0:
+                angle = 2 * 3.1415926 - angle
+            length = 10 + np.random.randint(config["ml"])
+            brush_w = 5 + np.random.randint(config["mbw"])
+            end_x = (start_x + length * np.sin(angle)).astype(np.int32)
+            end_y = (start_y + length * np.cos(angle)).astype(np.int32)
 
-    #         cv2.line(mask, (start_y, start_x), (end_y, end_x), 255.0, brush_w)
-    #         start_x, start_y = end_x, end_y
+            cv2.line(mask, (start_y, start_x), (end_y, end_x), 255.0, brush_w)
+            start_x, start_y = end_x, end_y
     config = {
         "img_shape": list(RESIZE_TO),
         "num_patches": 1,  # Number of circular patches
