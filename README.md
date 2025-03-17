@@ -45,7 +45,7 @@ This project focuses on restoring historical artifacts and manuscripts using cut
 
    ```bash
    python -m venv venv
-   venv\Scripts\activate #If MacOs use source venv/bin/activate 
+   venv\Scripts\activate #If MacOs use 'source venv/bin/activate' 
 
 3. Install the required packages:
 
@@ -54,25 +54,25 @@ This project focuses on restoring historical artifacts and manuscripts using cut
 
 4. Run FlaskApp:
 
-   ```bash
-   cd FlaskApp
-   python app.py
+    ```bash
+    cd FlaskApp
+    python app.py
 
 or
 
-5. Run Jupiter Notebook:
+5. To test using Jupiter Notebook:
 
-   ```bash
-   cd Notebook Implementation
-   mv Testing/'Pottery Inpainting.ipynb' FlaskApp
-   Run the notebook in the FlaskApp folder
+    ```bash
+    cd Notebook Implementation
+    mv Testing/'Pottery Inpainting.ipynb' FlaskApp
+    Run the notebook in the FlaskApp folder
 
-5. To Train the model:
+6. To train the model:
 
    ```bash
    cd Notebook Implementation/Training
    pip install -r requirements.txt
-   run the notebook
+   run the Training.ipynb notebook
 
 ## Project Structure
 ```text
