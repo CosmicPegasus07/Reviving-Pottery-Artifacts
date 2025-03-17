@@ -7,21 +7,18 @@ from flask import Flask, request, render_template, redirect, url_for, send_from_
 from werkzeug.utils import secure_filename
 import queue
 import threading
+from PIL import Image
+import time  # Add this with your other imports
 
 # For metrics calculation
 import cv2
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
+from skimage.feature import local_binary_pattern
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
-
-# Add imports for pattern_continuity, edge_coherence, and texture_consistency
-from skimage.feature import local_binary_pattern
-
-# Add this import at the top if not already present
-from PIL import Image
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'input')
@@ -276,15 +273,83 @@ def calculate_metrics():
     
     return metrics
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+def create_masked_input():
+    # Get the input image filename (with extension)
+    input_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
+                  if f.startswith('input_img')]
+    if not input_files:
+        return None
+    
+    input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_files[0])
+    mask_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
+                 if f.startswith('mask')]
+    if not mask_files:
+        return None
+    
+    mask_path = os.path.join(app.config['UPLOAD_FOLDER'], mask_files[0])
+    
+    # Create masked input image
+    input_image = cv2.imread(input_path)
+    mask_image = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    
+    # Resize both to 512x512
+    input_image = cv2.resize(input_image, (512, 512))
+    mask_image = cv2.resize(mask_image, (512, 512))
+    
+    # Create binary mask and apply it
+    _, binary_mask = cv2.threshold(mask_image, 1, 255, cv2.THRESH_BINARY)
+    masked_input = input_image.copy()
+    masked_input[binary_mask == 255] = [255, 255, 255]
+    
+    # Save the masked input image in the upload folder
+    masked_input_path = os.path.join(app.config['UPLOAD_FOLDER'], 'masked_input.png')
+    cv2.imwrite(masked_input_path, masked_input)
+    
+    return masked_input_path
+
+def convert_to_png(input_path, output_path, size=(512, 512)):
+    """Convert any supported image to PNG format and resize it"""
+    try:
+        with Image.open(input_path) as img:
+            # Convert to RGB mode if necessary
+            if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                # Convert to RGBA first to preserve alpha channel
+                img = img.convert('RGBA')
+                # Create white background
+                background = Image.new('RGBA', img.size, (255, 255, 255, 255))
+                # Composite the image onto the background
+                img = Image.alpha_composite(background, img)
+            # Convert to RGB mode
+            img = img.convert('RGB')
+            # Resize image
+            img = img.resize(size, Image.Resampling.LANCZOS)
+            # Save as PNG
+            img.save(output_path, 'PNG')
+            return True
+    except Exception as e:
+        print(f"Error converting image: {str(e)}")
+        return False
+
+def ensure_image_size(image_path, size=(512, 512)):
+    """Ensure image is the correct size"""
+    img = Image.open(image_path)
+    if img.size != size:
+        img = img.resize(size, Image.Resampling.LANCZOS)
+        img.save(image_path)
+
+# Update the send_progress function to include animation frames
+def send_progress(message, animate=True):
+    if animate and not message.endswith('complete!'):
+        # Add animation frames that will rotate in the frontend
+        message = f"{message}|▏▎▍▌▋▊▉█"
+    progress_queue.put(message)
 
 # Create a message queue for progress updates
 progress_queue = queue.Queue()
 
-def send_progress(message):
-    progress_queue.put(message)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 # Update the progress route to handle completion properly
 @app.route('/progress')
@@ -311,18 +376,20 @@ def upload():
         
         input_file = request.files['input_image']
         if input_file and allowed_file(input_file.filename):
-            # Get original extension
-            ext = os.path.splitext(input_file.filename)[1].lower()
-            # Save as input_img with original extension
-            input_filename = f'input_img{ext}'
-            input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
+            # Save original file temporarily
+            temp_input_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_input' + os.path.splitext(input_file.filename)[1])
+            input_file.save(temp_input_path)
             
-            # Open and resize the image using PIL
-            img = Image.open(input_file)
-            img = img.resize((512, 512), Image.Resampling.LANCZOS)
-            img.save(input_path)
+            # Convert to PNG
+            input_png_path = os.path.join(app.config['UPLOAD_FOLDER'], 'input_img.png')
+            if not convert_to_png(temp_input_path, input_png_path):
+                os.remove(temp_input_path)
+                return "Error processing input image", 400
+            
+            # Clean up temporary file
+            os.remove(temp_input_path)
         else:
-            return "Invalid input image", 400
+            return "Invalid input image format. Supported formats: PNG, JPG, JPEG", 400
 
         # --- Step 2: Handle mask selection ---
         mask_option = request.form.get('mask_option')
@@ -330,13 +397,20 @@ def upload():
         if mask_option == 'upload_mask':
             mask_file = request.files.get('mask_image')
             if mask_file and allowed_file(mask_file.filename):
-                # Save mask with original extension
-                ext = os.path.splitext(mask_file.filename)[1].lower()
-                mask_filename = f'mask{ext}'
-                mask_path = os.path.join(app.config['UPLOAD_FOLDER'], mask_filename)
-                mask_file.save(mask_path)
+                # Save original mask file temporarily
+                temp_mask_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_mask' + os.path.splitext(mask_file.filename)[1])
+                mask_file.save(temp_mask_path)
+                
+                # Convert to PNG
+                mask_png_path = os.path.join(app.config['UPLOAD_FOLDER'], 'mask.png')
+                if not convert_to_png(temp_mask_path, mask_png_path):
+                    os.remove(temp_mask_path)
+                    return "Error processing mask image", 400
+                
+                # Clean up temporary file
+                os.remove(temp_mask_path)
             else:
-                return "Invalid mask file", 400
+                return "Invalid mask image format. Supported formats: PNG, JPG, JPEG", 400
         elif mask_option == 'draw_mask':
             # Get the base64 image string from the canvas
             canvas_data = request.form.get('canvas_data')
@@ -399,9 +473,36 @@ def upload():
         # --- Step 3: Run the inpainting process ---
         def run_inpainting():
             try:
-                send_progress("Creating generator...")
-                subprocess.run(['python', 'inpaint.py'], check=True)
-                send_progress("Inpainting complete!")
+                send_progress("Creating generator", animate=True)
+                # Capture the subprocess output
+                process = subprocess.Popen(
+                    ['python', 'inpaint.py'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                # Monitor the process
+                while True:
+                    # Check if process has finished
+                    return_code = process.poll()
+                    if return_code is not None:
+                        # Process completed
+                        if return_code == 0:
+                            send_progress("Inpainting complete!", animate=False)
+                        else:
+                            send_progress("Error during inpainting", animate=False)
+                        break
+                    
+                    # While running, keep updating progress
+                    send_progress("Processing image", animate=True)
+                    time.sleep(1)  # Update every second
+                    
+                # Handle any warnings but continue processing
+                _, stderr = process.communicate()
+                if stderr and 'RuntimeWarning' in stderr:
+                    print("Encountered expected warnings during processing - continuing normally")
+                    
                 send_progress("DONE")
             except Exception as e:
                 send_progress(f"Error: {str(e)}")
@@ -429,40 +530,6 @@ def output_file(filename):
         ensure_image_size(file_path)
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
-def create_masked_input():
-    # Get the input image filename (with extension)
-    input_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
-                  if f.startswith('input_img')]
-    if not input_files:
-        return None
-    
-    input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_files[0])
-    mask_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) 
-                 if f.startswith('mask')]
-    if not mask_files:
-        return None
-    
-    mask_path = os.path.join(app.config['UPLOAD_FOLDER'], mask_files[0])
-    
-    # Create masked input image
-    input_image = cv2.imread(input_path)
-    mask_image = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-    
-    # Resize both to 512x512
-    input_image = cv2.resize(input_image, (512, 512))
-    mask_image = cv2.resize(mask_image, (512, 512))
-    
-    # Create binary mask and apply it
-    _, binary_mask = cv2.threshold(mask_image, 1, 255, cv2.THRESH_BINARY)
-    masked_input = input_image.copy()
-    masked_input[binary_mask == 255] = [255, 255, 255]
-    
-    # Save the masked input image in the upload folder
-    masked_input_path = os.path.join(app.config['UPLOAD_FOLDER'], 'masked_input.png')
-    cv2.imwrite(masked_input_path, masked_input)
-    
-    return masked_input_path
-
 @app.route('/masked_input')
 def masked_input():
     masked_input_path = create_masked_input()
@@ -476,13 +543,6 @@ def results():
     # Calculate metrics before rendering the results page
     metrics = calculate_metrics()
     return render_template('results.html', metrics=metrics)
-
-def ensure_image_size(image_path, size=(512, 512)):
-    """Ensure image is the correct size"""
-    img = Image.open(image_path)
-    if img.size != size:
-        img = img.resize(size, Image.Resampling.LANCZOS)
-        img.save(image_path)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Use Render-assigned port or default to 5000
