@@ -8,3 +8,4 @@
 **/*.jpeg
 /Implementations/Training/models/*.pth
 /Implementations/Training/pytorch_env
+/FlaskApp/model/*.pth

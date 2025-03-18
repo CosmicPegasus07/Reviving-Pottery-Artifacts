@@ -1,10 +1,8 @@
 # app.py
 import os
 import base64
-import shutil
 import subprocess
-from flask import Flask, request, render_template, redirect, url_for, send_from_directory, make_response, Response
-from werkzeug.utils import secure_filename
+from flask import Flask, request, render_template, send_from_directory, Response
 import queue
 import threading
 from PIL import Image
@@ -18,7 +16,6 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.feature import local_binary_pattern
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'input')
