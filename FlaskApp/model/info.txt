@@ -1,1 +1,2 @@
-This folder will contain the model from the DeepFill link mentioned in README.md
+This folder will contain the model 
+NOTE: Model must me named as deepfillv2_WGAN.pth
