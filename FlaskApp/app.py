@@ -363,7 +363,8 @@ def progress():
                 break
     return Response(generate(), mimetype='text/event-stream')
 
-# Update the upload route to ensure proper progress handling
+# Update the upload route to properly handle canvas data:
+
 @app.route('/upload', methods=['POST'])
 def upload():
     try:
@@ -392,7 +393,10 @@ def upload():
         mask_option = request.form.get('mask_option')
         
         if mask_option == 'upload_mask':
-            mask_file = request.files.get('mask_image')
+            if 'mask_image' not in request.files:
+                return "No mask image provided", 400
+            
+            mask_file = request.files['mask_image']
             if mask_file and allowed_file(mask_file.filename):
                 # Save original mask file temporarily
                 temp_mask_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_mask' + os.path.splitext(mask_file.filename)[1])
@@ -408,17 +412,25 @@ def upload():
                 os.remove(temp_mask_path)
             else:
                 return "Invalid mask image format. Supported formats: PNG, JPG, JPEG", 400
+        
         elif mask_option == 'draw_mask':
-            # Get the base64 image string from the canvas
+            # Get the base64 image data
             canvas_data = request.form.get('canvas_data')
-            if canvas_data:
-                header, encoded = canvas_data.split(',', 1)
+            if not canvas_data:
+                return "No canvas data provided", 400
+            
+            try:
+                # Extract the base64 data
+                _, encoded = canvas_data.split(',', 1)
                 mask_data = base64.b64decode(encoded)
+                
+                # Save the mask
                 mask_path = os.path.join(app.config['UPLOAD_FOLDER'], 'mask.png')
                 with open(mask_path, 'wb') as f:
                     f.write(mask_data)
-            else:
-                return "No canvas data provided", 400
+            except Exception as e:
+                return f"Error processing canvas data: {str(e)}", 400
+
         elif mask_option in ['random_freeform', 'circular', 'bbox', 'edge']:
             # Call your mask generation functions here (importing within the branch)
             if mask_option == 'random_freeform':

@@ -3,6 +3,7 @@
 <head>
   <title>Image Inpainting</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
     body {
       padding: 20px;
@@ -30,6 +31,7 @@
       height: auto;
       background-color: black;
       border-radius: 4px;
+      cursor: crosshair;
     }
     .form-group {
       margin-bottom: 25px;
@@ -63,6 +65,19 @@
       background: #f8f9fa;
       border-radius: 8px;
       display: none;
+    }
+    .drawing-controls {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .form-control-range {
+      width: 200px;
+      display: inline-block;
+      margin: 0 10px;
+    }
+    canvas.eraser {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="%23000000"><path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 01-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0zM4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l7.07-7.07-6.37-6.37L4.22 12.74c-.78.79-.78 2.05 0 2.84z"/></svg>') 10 10, auto;
     }
   </style>
 </head>
@@ -101,8 +116,25 @@
       </div>
       <div id="draw_mask_section" class="canvas-container" style="display:none;">
         <canvas id="maskCanvas" width="512" height="512"></canvas>
-        <button type="button" class="btn btn-secondary mt-2" onclick="clearCanvas()">Clear</button>
-        <input type="hidden" name="canvas_data" id="canvas_data">
+        <div class="drawing-controls mt-3">
+          <div class="form-group">
+            <label for="brushSize">Brush Size:</label>
+            <input type="range" class="form-control-range" id="brushSize" 
+                   min="1" max="50" value="5">
+            <span id="brushSizeValue">5px</span>
+          </div>
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-primary active" id="drawMode">
+              <i class="fas fa-paint-brush"></i> Draw
+            </button>
+            <button type="button" class="btn btn-secondary" id="eraseMode">
+              <i class="fas fa-eraser"></i> Erase
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="clearCanvas()">
+              <i class="fas fa-trash"></i> Clear
+            </button>
+          </div>
+        </div>
       </div>
       <div id="upload_mask_section" class="form-group" style="display:none;">
         <label for="mask_image">Mask Image (PNG, JPG, JPEG):</label>
@@ -123,6 +155,8 @@
     const intensityValue = document.getElementById('intensity_value');
 
     let uploadedImage = null;
+    let maskLayer = document.createElement('canvas');
+    let maskCtx = maskLayer.getContext('2d');
 
     // Handle file input change
     document.getElementById('input_image').addEventListener('change', function(e) {
@@ -172,99 +206,122 @@
 
     const canvas = document.getElementById('maskCanvas');
     const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let lastX, lastY;
+    let isEraser = false;
+    let brushSize = 5;
+
+    // Initialize brush size control
+    const brushSizeControl = document.getElementById('brushSize');
+    const brushSizeValue = document.getElementById('brushSizeValue');
+    const drawModeBtn = document.getElementById('drawMode');
+    const eraseModeBtn = document.getElementById('eraseMode');
+
+    function updateBrushSize() {
+        brushSize = brushSizeControl.value;
+        brushSizeValue.textContent = `${brushSize}px`;
+    }
+
+    brushSizeControl.addEventListener('input', updateBrushSize);
+
+    // Mode switching
+    drawModeBtn.addEventListener('click', () => {
+        isEraser = false;
+        canvas.classList.remove('eraser');
+        drawModeBtn.classList.add('active');
+        eraseModeBtn.classList.remove('active');
+    });
+
+    eraseModeBtn.addEventListener('click', () => {
+        isEraser = true;
+        canvas.classList.add('eraser');
+        eraseModeBtn.classList.add('active');
+        drawModeBtn.classList.remove('active');
+    });
 
     function initializeCanvas() {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear main canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw uploaded image if exists
+        if (uploadedImage) {
+            ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+        }
+
+        // Initialize mask layer
+        maskLayer.width = canvas.width;
+        maskLayer.height = canvas.height;
+        maskCtx.clearRect(0, 0, maskLayer.width, maskLayer.height);
+        maskCtx.fillStyle = 'rgba(0, 0, 0, 0)';
+        maskCtx.fillRect(0, 0, maskLayer.width, maskLayer.height);
     }
 
     function clearCanvas() {
+        initializeCanvas();
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Draw on mask layer
+        maskCtx.beginPath();
+        maskCtx.moveTo(lastX, lastY);
+        maskCtx.lineTo(x, y);
+        maskCtx.strokeStyle = '#ffffff';
+        maskCtx.lineWidth = brushSize;
+        maskCtx.lineCap = 'round';
+        maskCtx.lineJoin = 'round';
+        
+        if (isEraser) {
+            maskCtx.globalCompositeOperation = 'destination-out';
+        } else {
+            maskCtx.globalCompositeOperation = 'source-over';
+        }
+        
+        maskCtx.stroke();
+        
+        // Update display
+        updateDisplay();
+        
+        [lastX, lastY] = [x, y];
+    }
+
+    function updateDisplay() {
+        // Clear and draw uploaded image
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (uploadedImage) {
             ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
-        } else {
-            initializeCanvas();
         }
+        
+        // Overlay mask with semi-transparency for visual feedback
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(maskLayer, 0, 0);
+        ctx.globalAlpha = 1.0;
     }
 
-    initializeCanvas();
-
-    let drawing = false;
-    let lastX, lastY;
-
+    // Event listeners
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseout', stopDrawing);
 
+    // Initialize canvas
+    initializeCanvas();
+
     function startDrawing(e) {
         drawing = true;
-        [lastX, lastY] = [e.offsetX, e.offsetY];
-    }
-
-    function draw(e) {
-        if (!drawing) return;
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 5;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-        [lastX, lastY] = [e.offsetX, e.offsetY];
+        const rect = canvas.getBoundingClientRect();
+        [lastX, lastY] = [e.clientX - rect.left, e.clientY - rect.top];
     }
 
     function stopDrawing() {
         drawing = false;
     }
 
-    document.querySelector('form').addEventListener('submit', function(e) {
-        if (document.getElementById('mask_option').value === 'draw_mask') {
-            // Create a temporary canvas for the mask
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-
-            // Fill with black background
-            tempCtx.fillStyle = 'black';
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-            // Get the image data from the main canvas
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-
-            // Create mask image data
-            const maskImageData = tempCtx.createImageData(canvas.width, canvas.height);
-            const maskData = maskImageData.data;
-
-            // For each pixel, check if it's been drawn on
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
-                    maskData[i] = 255;     // R
-                    maskData[i + 1] = 255; // G
-                    maskData[i + 2] = 255; // B
-                    maskData[i + 3] = 255; // A
-                } else {
-                    maskData[i + 3] = 255; // Set alpha to fully opaque
-                }
-            }
-
-            // Put the mask data on the temporary canvas
-            tempCtx.putImageData(maskImageData, 0, 0);
-
-            // Set the form data to the mask image
-            document.getElementById('canvas_data').value = tempCanvas.toDataURL('image/png');
-        }
-    });
-  </script>
-
-  <div id="progress" class="progress-container">
-    <div class="progress-message"></div>
-    <div class="progress-spinner"></div>
-  </div>
-
-  <script>
     document.querySelector('form').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -275,8 +332,30 @@
         progressDiv.style.display = 'block';
         progressMessage.textContent = 'Starting process...';
         
-        // Submit form
+        // Create FormData object
         const formData = new FormData(this);
+        
+        // Handle drawn mask if that option is selected
+        if (document.getElementById('mask_option').value === 'draw_mask') {
+            // Create final mask canvas
+            const finalMask = document.createElement('canvas');
+            finalMask.width = canvas.width;
+            finalMask.height = canvas.height;
+            const finalCtx = finalMask.getContext('2d');
+            
+            // Fill with black background
+            finalCtx.fillStyle = 'black';
+            finalCtx.fillRect(0, 0, finalMask.width, finalMask.height);
+            
+            // Draw white brush strokes from mask layer
+            finalCtx.drawImage(maskLayer, 0, 0);
+            
+            // Convert canvas to base64 and add to form data
+            const maskData = finalMask.toDataURL('image/png').split(',')[1];
+            formData.set('canvas_data', 'data:image/png;base64,' + maskData);
+        }
+        
+        // Submit form
         fetch('/upload', {
             method: 'POST',
             body: formData
@@ -326,5 +405,11 @@
         });
     });
   </script>
+
+  <div id="progress" class="progress-container">
+    <div class="progress-message"></div>
+    <div class="progress-spinner"></div>
+  </div>
+
 </body>
 </html>
